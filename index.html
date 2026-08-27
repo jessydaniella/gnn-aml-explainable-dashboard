@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LedgerLens: Chapter Four Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#10151C; --paper:#F6F5F2; --panel:#FFFFFF;
+    --line:#DDD9D0; --line-soft:#EAE7E0; --text:#1A1D22; --text-dim:#6B7078;
+    --risk-high:#B3261E; --risk-high-bg:#FBEAE9;
+    --risk-low:#1F6F5C; --risk-low-bg:#E9F3F0;
+    --amber:#9A6B1E; --amber-bg:#FBF1E1;
+    --accent:#2E4374; --accent-soft:#E7EAF2;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{font-family:'IBM Plex Sans', sans-serif; background:var(--paper); color:var(--text); -webkit-font-smoothing:antialiased;}
+  .mono{font-family:'IBM Plex Mono', monospace;}
+
+  .topbar{height:56px; background:var(--ink); color:#fff; display:flex; align-items:center; justify-content:space-between; padding:0 20px; position:sticky; top:0; z-index:20;}
+  .brand{display:flex; align-items:center; gap:10px;}
+  .brand-mark{width:26px;height:26px;border-radius:6px; background:linear-gradient(135deg,#4A639E,#2E4374); display:flex;align-items:center;justify-content:center; font-family:'IBM Plex Mono';font-weight:600;font-size:13px;}
+  .brand-name{font-weight:600; font-size:15px;}
+  .brand-sub{font-size:11px; color:#9BA3B0; margin-left:8px; font-family:'IBM Plex Mono';}
+  .real-badge{background:#1F6F5C; color:#fff; font-size:11px; font-family:'IBM Plex Mono'; padding:4px 10px; border-radius:20px;}
+
+  .banner{background:#EFEDE6; border-bottom:1px solid var(--line); padding:12px 24px; font-size:12.5px; color:var(--text-dim); display:flex; gap:24px; flex-wrap:wrap; align-items:center;}
+  .banner-metric{display:flex; flex-direction:column; gap:2px;}
+  .banner-label{font-size:10.5px; text-transform:uppercase; letter-spacing:0.4px; color:var(--text-dim);}
+  .banner-val{font-family:'IBM Plex Mono'; font-size:15px; font-weight:600; color:var(--text);}
+
+  .layout{display:grid; grid-template-columns:320px 1fr; min-height:calc(100vh - 56px);}
+  .queue{background:var(--panel); border-right:1px solid var(--line); padding:14px 0; overflow-y:auto;}
+  .queue-header{padding:0 16px 10px; display:flex; justify-content:space-between; align-items:baseline; border-bottom:1px solid var(--line-soft); margin-bottom:10px;}
+  .queue-title{font-size:12px; text-transform:uppercase; letter-spacing:0.6px; color:var(--text-dim); font-weight:600;}
+  .queue-count{font-family:'IBM Plex Mono'; font-size:12px; color:var(--text-dim);}
+
+  .filter-block{padding:0 16px 14px; border-bottom:1px solid var(--line-soft); margin-bottom:6px;}
+  .search-box{width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:7px; font-size:12.5px; font-family:'IBM Plex Sans'; background:#FAF9F7; margin-bottom:10px;}
+  .search-box:focus{outline:2px solid var(--accent); outline-offset:1px;}
+  .chip-row{display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;}
+  .chip{font-size:11.5px; padding:5px 10px; border-radius:20px; border:1px solid var(--line); background:#fff; cursor:pointer; color:var(--text-dim);}
+  .chip.active{background:var(--ink); color:#fff; border-color:var(--ink);}
+  .filter-label{font-size:11px; color:var(--text-dim); margin-bottom:4px; display:block;}
+  .sort-select{width:100%; padding:6px 8px; border:1px solid var(--line); border-radius:6px; font-size:12px; margin-bottom:10px; background:#fff;}
+  .reset-link{font-size:11.5px; color:var(--accent); cursor:pointer; text-decoration:underline;}
+
+  .queue-item{padding:12px 16px; border-left:3px solid transparent; cursor:pointer; border-bottom:1px solid var(--line-soft); transition:background .12s ease;}
+  .queue-item:hover{background:#FAF9F7;}
+  .queue-item.active{background:var(--accent-soft); border-left-color:var(--accent);}
+  .qi-top{display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;}
+  .qi-id{font-family:'IBM Plex Mono'; font-size:12.5px; color:var(--text);}
+  .risk-badge{display:inline-flex; align-items:center; gap:5px; font-family:'IBM Plex Mono'; font-size:11px; font-weight:600; padding:2px 7px; border-radius:4px;}
+  .risk-badge.high{background:var(--risk-high-bg); color:var(--risk-high);}
+  .risk-badge.low{background:var(--risk-low-bg); color:var(--risk-low);}
+  .qi-meta{font-size:11.5px; color:var(--text-dim); margin-top:3px;}
+  .match-tag{font-size:10px; font-family:'IBM Plex Mono'; padding:1px 6px; border-radius:3px; margin-top:4px; display:inline-block;}
+  .match-tag.correct{background:#E9F3F0; color:#1F6F5C;}
+  .match-tag.wrong{background:#FBEAE9; color:#B3261E;}
+  .no-match{padding:20px 16px; font-size:12.5px; color:var(--text-dim); text-align:center;}
+
+  .main{padding:26px 36px 60px; max-width:920px;}
+  .case-header{display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:22px; flex-wrap:wrap; gap:16px;}
+  .case-id-row{display:flex; align-items:center; gap:10px; margin-bottom:6px; flex-wrap:wrap;}
+  .case-title{font-size:20px; font-weight:600;}
+  .case-hash{font-family:'IBM Plex Mono'; font-size:12.5px; color:var(--text-dim);}
+  .case-tags{display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;}
+  .tag{font-size:11px; padding:3px 8px; border-radius:4px; background:var(--line-soft); color:var(--text-dim); font-family:'IBM Plex Mono';}
+
+  .verdict-card{display:flex; align-items:center; gap:16px; background:var(--ink); color:#fff; border-radius:10px; padding:14px 20px; min-width:260px;}
+  .verdict-score{font-family:'IBM Plex Mono'; font-size:30px; font-weight:600; line-height:1;}
+  .verdict-score.high{color:#F0908A;} .verdict-score.low{color:#7FC9B4;}
+  .verdict-label{font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:#9BA3B0; margin-bottom:4px;}
+  .verdict-conf{font-size:12px; color:#C7CCD6; margin-top:4px;}
+
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:20px 22px; margin-bottom:18px;}
+  .card-head{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:14px; flex-wrap:wrap; gap:6px;}
+  .card-title{font-size:13.5px; font-weight:600; text-transform:uppercase; letter-spacing:0.4px;}
+  .card-note{font-size:12px; color:var(--text-dim);}
+
+  .shap-base{display:flex; justify-content:space-between; font-family:'IBM Plex Mono'; font-size:11.5px; color:var(--text-dim); margin-bottom:10px; padding-bottom:8px; border-bottom:1px dashed var(--line);}
+  .shap-row{display:grid; grid-template-columns:110px 1fr 70px; align-items:center; gap:10px; margin:9px 0;}
+  .shap-feat{font-size:12.5px; font-family:'IBM Plex Mono'; color:var(--text);}
+  .shap-track{position:relative; height:20px; background:var(--line-soft); border-radius:4px; overflow:hidden;}
+  .shap-mid{position:absolute; left:50%; top:0; bottom:0; width:1px; background:#B9B4A8;}
+  .shap-bar{position:absolute; top:2px; bottom:2px; border-radius:3px;}
+  .shap-bar.pos{background:var(--risk-high); left:50%;}
+  .shap-bar.neg{background:var(--risk-low); right:50%;}
+  .shap-val{font-family:'IBM Plex Mono'; font-size:11.5px; text-align:right;}
+  .shap-val.pos{color:var(--risk-high);} .shap-val.neg{color:var(--risk-low);}
+  .shap-legend{display:flex; gap:18px; margin-top:14px; font-size:11.5px; color:var(--text-dim);}
+  .legend-dot{display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:6px; vertical-align:middle;}
+  .shap-flat{font-size:12.5px; color:var(--text-dim); font-style:italic; padding:10px 0;}
+
+  .feature-grid{display:grid; grid-template-columns:repeat(3, 1fr); gap:14px;}
+  .feature-item{padding:10px 12px; background:#FAF9F7; border-radius:8px; border:1px solid var(--line-soft);}
+  .feature-label{font-size:11px; color:var(--text-dim); margin-bottom:4px;}
+  .feature-value{font-family:'IBM Plex Mono'; font-size:14px; font-weight:500;}
+
+  .verify-box{display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:8px; margin-bottom:14px; flex-wrap:wrap;}
+  .verify-box.correct{background:var(--risk-low-bg); color:var(--risk-low);}
+  .verify-box.wrong{background:var(--risk-high-bg); color:var(--risk-high);}
+  .verify-box .vlabel{font-size:12.5px; font-weight:600;}
+
+  .decision-row{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;}
+  .btn{font-family:'IBM Plex Sans'; font-size:13px; font-weight:600; padding:10px 16px; border-radius:7px; border:1px solid transparent; cursor:pointer; transition:opacity .15s ease;}
+  .btn:hover{opacity:.88;}
+  .btn-confirm{background:var(--risk-high); color:#fff;}
+  .btn-clear{background:var(--risk-low); color:#fff;}
+  .btn-escalate{background:var(--amber-bg); color:var(--amber); border-color:#E4CFA0;}
+  textarea{width:100%; min-height:56px; border:1px solid var(--line); border-radius:8px; padding:10px 12px; font-family:'IBM Plex Sans'; font-size:13px; resize:vertical; background:#FAF9F7;}
+  .decision-confirm-msg{display:none; margin-top:10px; padding:9px 12px; background:var(--accent-soft); color:var(--accent); border-radius:7px; font-size:12.5px;}
+
+  .confusion-grid{display:grid; grid-template-columns:auto repeat(2, 1fr); gap:2px; max-width:420px; font-size:12.5px;}
+  .cm-cell{padding:12px; text-align:center; border-radius:6px;}
+  .cm-head{background:transparent; font-weight:600; color:var(--text-dim); font-size:11px;}
+  .cm-tn{background:var(--risk-low-bg); color:var(--risk-low); font-family:'IBM Plex Mono'; font-weight:600;}
+  .cm-fp{background:var(--risk-high-bg); color:var(--risk-high); font-family:'IBM Plex Mono'; font-weight:600;}
+  .cm-fn{background:var(--risk-high-bg); color:var(--risk-high); font-family:'IBM Plex Mono'; font-weight:600;}
+  .cm-tp{background:var(--risk-low-bg); color:var(--risk-low); font-family:'IBM Plex Mono'; font-weight:600;}
+
+  .proto-note{font-size:11.5px; color:var(--text-dim); padding:14px 0 0; border-top:1px solid var(--line-soft); margin-top:6px;}
+  .proto-note b{color:var(--text);}
+
+  @media (max-width:760px){
+    .layout{grid-template-columns:1fr;}
+    .queue{border-right:none; border-bottom:1px solid var(--line); max-height:320px;}
+    .feature-grid{grid-template-columns:repeat(2,1fr);}
+    .banner{gap:16px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-mark">LL</div>
+    <span class="brand-name">LedgerLens</span>
+    <span class="brand-sub">GNN DECISION-SUPPORT PROTOTYPE, CHAPTER FOUR</span>
+  </div>
+  <span class="real-badge">● REAL MODEL OUTPUT</span>
+</div>
+
+<div class="banner">
+  <div class="banner-metric"><span class="banner-label">Accuracy</span><span class="banner-val">89.3%</span></div>
+  <div class="banner-metric"><span class="banner-label">Precision</span><span class="banner-val">0.284</span></div>
+  <div class="banner-metric"><span class="banner-label">Recall</span><span class="banner-val">0.585</span></div>
+  <div class="banner-metric"><span class="banner-label">F1-score</span><span class="banner-val">0.383</span></div>
+  <div class="banner-metric"><span class="banner-label">ROC-AUC</span><span class="banner-val">0.846</span></div>
+  <span style="max-width:380px;">GAT trained on the real Elliptic dataset (203,769 txns). Test = held-out steps 40–49 (Table 3.2 split). See Chapter Four for full results.</span>
+</div>
+
+<div class="layout">
+  <div class="queue" id="queue">
+    <div class="queue-header"><span class="queue-title">Test-set cases</span><span class="queue-count" id="qcount"></span></div>
+    <div class="filter-block">
+      <input type="text" class="search-box" id="searchInput" placeholder="Search transaction ID...">
+      <div class="chip-row">
+        <span class="chip active" data-tier="all">All</span>
+        <span class="chip" data-tier="high">⚠ High risk</span>
+        <span class="chip" data-tier="low">✓ Low risk</span>
+      </div>
+      <label class="filter-label">Sort</label>
+      <select class="sort-select" id="sortSelect">
+        <option value="risk_desc">Risk score (high → low)</option>
+        <option value="risk_asc">Risk score (low → high)</option>
+        <option value="step_asc">Time step (earliest first)</option>
+        <option value="step_desc">Time step (latest first)</option>
+      </select>
+      <label class="filter-label">Step ≥ <span id="stepVal">0</span></label>
+      <input type="range" id="stepMin" min="40" max="49" value="40" style="width:100%;">
+      <div style="margin-top:8px;"><span class="reset-link" id="resetFilters">Reset filters</span></div>
+    </div>
+  </div>
+  <div class="main" id="main"></div>
+</div>
+
+<script>
+const cases = [{"txId": 72631257, "node_idx": 169652, "timestep": 42, "pred_prob": 0.9864, "true_label": 1, "in_degree": 1, "out_degree": 0, "n_neighbors_2hop": 3, "base_value": 0.88, "shap_top": [{"f": "feature_16", "v": 0.0305}, {"f": "feature_119", "v": 0.0181}, {"f": "feature_40", "v": 0.0117}, {"f": "feature_53", "v": 0.0114}, {"f": "feature_91", "v": 0.0108}, {"f": "feature_108", "v": 0.0067}]}, {"txId": 72601480, "node_idx": 170231, "timestep": 42, "pred_prob": 0.9862, "true_label": 1, "in_degree": 1, "out_degree": 0, "n_neighbors_2hop": 3, "base_value": 0.0945, "shap_top": [{"f": "feature_142", "v": 0.4022}, {"f": "feature_17", "v": 0.1288}, {"f": "feature_64", "v": 0.1013}, {"f": "feature_35", "v": 0.0866}, {"f": "feature_148", "v": 0.0549}, {"f": "feature_23", "v": 0.0384}]}, {"txId": 105843745, "node_idx": 181547, "timestep": 44, "pred_prob": 0.9972, "true_label": 0, "in_degree": 0, "out_degree": 1, "n_neighbors_2hop": 1, "base_value": 0.1888, "shap_top": [{"f": "feature_130", "v": 0.2663}, {"f": "feature_144", "v": 0.1386}, {"f": "feature_74", "v": 0.0738}, {"f": "feature_25", "v": 0.0636}, {"f": "feature_106", "v": 0.0604}, {"f": "feature_165", "v": 0.058}]}, {"txId": 94065921, "node_idx": 174911, "timestep": 43, "pred_prob": 0.9966, "true_label": 0, "in_degree": 0, "out_degree": 2, "n_neighbors_2hop": 1, "base_value": 0.1888, "shap_top": [{"f": "feature_2", "v": 0.2168}, {"f": "feature_142", "v": 0.1986}, {"f": "feature_25", "v": 0.1041}, {"f": "feature_113", "v": 0.0573}, {"f": "feature_42", "v": 0.0472}, {"f": "feature_53", "v": 0.0449}]}, {"txId": 94266065, "node_idx": 175168, "timestep": 43, "pred_prob": 0.0, "true_label": 0, "in_degree": 0, "out_degree": 2, "n_neighbors_2hop": 1, "base_value": 0.1888, "shap_top": [{"f": "feature_118", "v": -0.0315}, {"f": "feature_34", "v": -0.0309}, {"f": "feature_163", "v": -0.0283}, {"f": "feature_76", "v": -0.0242}, {"f": "feature_74", "v": -0.022}, {"f": "feature_114", "v": -0.0201}]}, {"txId": 156223466, "node_idx": 185509, "timestep": 45, "pred_prob": 0.0, "true_label": 0, "in_degree": 1, "out_degree": 0, "n_neighbors_2hop": 2, "base_value": 0.0, "shap_top": [{"f": "feature_1", "v": 0.0}, {"f": "feature_2", "v": 0.0}, {"f": "feature_3", "v": 0.0}, {"f": "feature_4", "v": 0.0}, {"f": "feature_5", "v": 0.0}, {"f": "feature_6", "v": 0.0}]}];
+const confusionMatrix = [[9612, 936], [264, 372]]; // [[TN, FP], [FN, TP]]
+
+let activeIdx = 0;
+let currentFilters = { search: "", tier: "all", sort: "risk_desc", stepMin: 40 };
+
+function riskTier(p){ return p >= 0.5 ? 'high' : 'low'; }
+
+function getFilteredSortedCases(){
+  let list = cases.filter(c => {
+    if (currentFilters.search && !String(c.txId).includes(currentFilters.search)) return false;
+    if (currentFilters.tier !== 'all' && riskTier(c.pred_prob) !== currentFilters.tier) return false;
+    if (c.timestep < currentFilters.stepMin) return false;
+    return true;
+  });
+  const sortFns = {
+    risk_desc: (a,b) => b.pred_prob - a.pred_prob,
+    risk_asc: (a,b) => a.pred_prob - b.pred_prob,
+    step_asc: (a,b) => a.timestep - b.timestep,
+    step_desc: (a,b) => b.timestep - a.timestep,
+  };
+  list.sort(sortFns[currentFilters.sort]);
+  return list;
+}
+
+function renderQueue(){
+  const q = document.getElementById('queue');
+  q.querySelectorAll('.queue-item, .no-match').forEach(n => n.remove());
+  const visible = getFilteredSortedCases();
+  document.getElementById('qcount').textContent = `${visible.length} / ${cases.length}`;
+
+  if (visible.length === 0) {
+    const div = document.createElement('div');
+    div.className = 'no-match';
+    div.textContent = 'No transactions match these filters.';
+    q.appendChild(div);
+    return;
+  }
+
+  if (!visible.find(c => c.txId === cases[activeIdx].txId)) {
+    activeIdx = cases.findIndex(c => c.txId === visible[0].txId);
+  }
+
+  visible.forEach(c => {
+    const realIdx = cases.findIndex(x => x.txId === c.txId);
+    const tier = riskTier(c.pred_prob);
+    const predLabel = c.pred_prob >= 0.5 ? 1 : 0;
+    const correct = predLabel === c.true_label;
+    const div = document.createElement('div');
+    div.className = 'queue-item' + (realIdx === activeIdx ? ' active' : '');
+    div.onclick = () => { activeIdx = realIdx; renderQueue(); renderMain(); };
+    div.innerHTML = `
+      <div class="qi-top">
+        <span class="qi-id">tx ${c.txId}</span>
+        <span class="risk-badge ${tier}">${tier === 'high' ? '⚠' : '✓'} ${(c.pred_prob*100).toFixed(1)}%</span>
+      </div>
+      <div class="qi-meta">step ${c.timestep} · ${c.in_degree}in / ${c.out_degree}out</div>
+      <span class="match-tag ${correct ? 'correct' : 'wrong'}">${correct ? 'model ✓ matches label' : 'model ✗ vs label'}</span>
+    `;
+    q.appendChild(div);
+  });
+}
+
+function shapRows(shapTop){
+  const vals = shapTop.map(s => Math.abs(s.v));
+  const maxAbs = Math.max(...vals, 0.001);
+  const allZero = vals.every(v => v === 0);
+  if (allZero) {
+    return '<div class="shap-flat">All top feature perturbations returned zero change: the model output is saturated at this end of the probability range for this case (a genuine, if unglamorous, real result).</div>';
+  }
+  return shapTop.map(s => {
+    const pct = (Math.abs(s.v) / maxAbs) * 46;
+    const isPos = s.v >= 0;
+    return `
+      <div class="shap-row">
+        <div class="shap-feat">${s.f}</div>
+        <div class="shap-track"><div class="shap-mid"></div><div class="shap-bar ${isPos?'pos':'neg'}" style="width:${pct}%"></div></div>
+        <div class="shap-val ${isPos?'pos':'neg'}">${isPos?'+':''}${s.v.toFixed(4)}</div>
+      </div>`;
+  }).join('');
+}
+
+function renderMain(){
+  const c = cases[activeIdx];
+  const tier = riskTier(c.pred_prob);
+  const predLabel = c.pred_prob >= 0.5 ? 1 : 0;
+  const correct = predLabel === c.true_label;
+  const labelText = l => l === 1 ? 'Illicit' : 'Licit';
+  const main = document.getElementById('main');
+  main.innerHTML = `
+    <div class="case-header">
+      <div>
+        <div class="case-id-row">
+          <span class="case-title">Transaction ${c.txId}</span>
+          <span class="risk-badge ${tier}">${tier==='high' ? 'FLAGGED' : 'CLEARED'}</span>
+        </div>
+        <div class="case-hash">graph node #${c.node_idx} · Elliptic time step ${c.timestep}</div>
+        <div class="case-tags">
+          <span class="tag">${c.in_degree} in / ${c.out_degree} out-edges</span>
+          <span class="tag">${c.n_neighbors_2hop} nodes in 2-hop neighbourhood</span>
+          <span class="tag">Elliptic graph · held-out test split (steps 40-49)</span>
+        </div>
+      </div>
+      <div class="verdict-card">
+        <div>
+          <div class="verdict-label">GAT model prediction</div>
+          <div class="verdict-score ${tier==='high'?'high':'low'}">${(c.pred_prob*100).toFixed(1)}%</div>
+          <div class="verdict-conf">P(illicit) · real forward pass</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="verify-box ${correct ? 'correct' : 'wrong'}">
+      <span class="vlabel">${correct ? '✓ Model prediction matches the Elliptic ground-truth label' : '✗ Model prediction does NOT match the ground-truth label'}</span>
+      <span style="font-size:12px;">predicted: <b>${labelText(predLabel)}</b>, actual label: <b>${labelText(c.true_label)}</b></span>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <span class="card-title">Why the model reached this score: real SHAP values</span>
+        <span class="card-note">Top ${c.shap_top.length} features by |SHAP value|</span>
+      </div>
+      <div class="shap-base">
+        <span>SHAP base value: ${c.base_value.toFixed(3)}</span>
+        <span>Final prediction: ${(c.pred_prob*100).toFixed(1)}%</span>
+      </div>
+      ${shapRows(c.shap_top)}
+      <div class="shap-legend">
+        <span><span class="legend-dot" style="background:var(--risk-high)"></span>Pushes toward illicit</span>
+        <span><span class="legend-dot" style="background:var(--risk-low)"></span>Pushes toward licit</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><span class="card-title">Transaction context (from the real Elliptic graph)</span></div>
+      <div class="feature-grid">
+        <div class="feature-item"><div class="feature-label">Transaction ID</div><div class="feature-value">${c.txId}</div></div>
+        <div class="feature-item"><div class="feature-label">Time step</div><div class="feature-value">${c.timestep} / 49</div></div>
+        <div class="feature-item"><div class="feature-label">In-degree</div><div class="feature-value">${c.in_degree}</div></div>
+        <div class="feature-item"><div class="feature-label">Out-degree</div><div class="feature-value">${c.out_degree}</div></div>
+        <div class="feature-item"><div class="feature-label">2-hop neighbourhood size</div><div class="feature-value">${c.n_neighbors_2hop}</div></div>
+        <div class="feature-item"><div class="feature-label">Dataset split</div><div class="feature-value" style="font-size:12px;">Test (steps 40-49)</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><span class="card-title">Analyst decision</span><span class="card-note">Action would be logged against tx ${c.txId}</span></div>
+      <div class="decision-row">
+        <button class="btn btn-confirm" onclick="showDecisionConfirm(this, 'Confirmed illicit')">Confirm illicit</button>
+        <button class="btn btn-clear" onclick="showDecisionConfirm(this, 'Marked as licit')">Mark as licit</button>
+        <button class="btn btn-escalate" onclick="showDecisionConfirm(this, 'Escalated for review')">Escalate for review</button>
+      </div>
+      <textarea placeholder="Add a note for the audit trail (optional)..."></textarea>
+      <div class="decision-confirm-msg" id="decisionMsg"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><span class="card-title">Model confusion matrix (full test set, 11,184 transactions)</span></div>
+      <div class="confusion-grid">
+        <div class="cm-cell cm-head"></div>
+        <div class="cm-cell cm-head">Predicted Licit</div>
+        <div class="cm-cell cm-head">Predicted Illicit</div>
+        <div class="cm-cell cm-head">Actual Licit</div>
+        <div class="cm-cell cm-tn">${confusionMatrix[0][0]} (TN)</div>
+        <div class="cm-cell cm-fp">${confusionMatrix[0][1]} (FP)</div>
+        <div class="cm-cell cm-head">Actual Illicit</div>
+        <div class="cm-cell cm-fn">${confusionMatrix[1][0]} (FN)</div>
+        <div class="cm-cell cm-tp">${confusionMatrix[1][1]} (TP)</div>
+      </div>
+    </div>
+
+    <div class="proto-note">
+      <b>Methodology:</b> Real Elliptic Bitcoin Dataset (203,769 txns, 234,355 edges, 165 features) uploaded and processed directly.
+      2-layer GAT (4 attention heads, hidden dim 16), class-weighted loss, temporal split per Chapter Three Table 3.2
+      (train 1-34, val 35-39, test 40-49), 80 epochs. SHAP values computed with KernelExplainer, perturbing each
+      transaction's own 165 features against a 25-node training background, restricted to its 2-hop subgraph for
+      tractability. Feature names (feature_1...feature_165) match the dataset's own anonymised columns. True labels
+      shown are the dataset's ground truth, used here only to verify the demo; a live system would not have them
+      in advance.
+    </div>
+  `;
+}
+
+function showDecisionConfirm(button, message){
+  const msgBox = document.getElementById('decisionMsg');
+  msgBox.textContent = `✓ ${message} (demo only, not yet persisted to a case record).`;
+  msgBox.style.display = 'block';
+}
+
+document.getElementById('searchInput').addEventListener('input', (e) => {
+  currentFilters.search = e.target.value.trim();
+  renderQueue();
+});
+document.querySelectorAll('.chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    currentFilters.tier = chip.dataset.tier;
+    renderQueue();
+  });
+});
+document.getElementById('sortSelect').addEventListener('change', (e) => {
+  currentFilters.sort = e.target.value;
+  renderQueue();
+});
+document.getElementById('stepMin').addEventListener('input', (e) => {
+  currentFilters.stepMin = parseInt(e.target.value, 10);
+  document.getElementById('stepVal').textContent = currentFilters.stepMin;
+  renderQueue();
+});
+document.getElementById('resetFilters').addEventListener('click', () => {
+  currentFilters = { search: "", tier: "all", sort: "risk_desc", stepMin: 40 };
+  document.getElementById('searchInput').value = "";
+  document.getElementById('sortSelect').value = "risk_desc";
+  document.getElementById('stepMin').value = 40;
+  document.getElementById('stepVal').textContent = 40;
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  document.querySelector('.chip[data-tier="all"]').classList.add('active');
+  renderQueue();
+  renderMain();
+});
+
+document.getElementById('stepVal').textContent = document.getElementById('stepMin').value;
+renderQueue();
+renderMain();
+</script>
+
+</body>
+</html>

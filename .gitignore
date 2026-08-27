@@ -1,0 +1,19 @@
+# Raw dataset files (download separately - see README "Getting the data")
+data/*.xlsx
+data/*.csv
+
+# Large intermediate/regeneratable pipeline outputs (produced by running the scripts)
+outputs/*.pt
+outputs/*.csv
+outputs/figures/
+
+# Keep the small, final result artifacts in results/ (these ARE tracked)
+!results/
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
