@@ -14,7 +14,7 @@ os.makedirs("outputs", exist_ok=True)
 import time
 import numpy as np
 import torch
-import torch.nn as nn
+import torch.nn as nnscripts/ch4_step3_train_gat.py
 import torch.nn.functional as F
 from torch_geometric.nn import GATConv
 from sklearn.metrics import (
